@@ -3,7 +3,7 @@ module plfa.part1.Relations where
 import Relation.Binary.PropositionalEquality as Eq 
 open Eq using (_≡_; refl; cong)
 open import Data.Nat using (ℕ; zero; suc; _+_; _*_)
-open import Data.Nat.Properties using (+-comm; +-identityʳ)
+open import Data.Nat.Properties using (+-comm; +-identityʳ; *-comm)
 
 data _≤_ : ℕ → ℕ → Set where 
   z≤n : ∀ {n : ℕ}
@@ -117,7 +117,7 @@ data Total (m n : ℕ) : Set where
         ---------------
         → m * p ≤ n * p 
 
-*-monol-≤ m n p m≤n rewrite +-comm m p | +-comm n p = +-monor-≤ p  m n m≤n
+*-monol-≤ m n p m≤n rewrite *-comm m p | *-comm n p = *-monor-≤ p m n m≤n
 
 *-mono-≤ : ∀ ( m n p q : ℕ)
           → m ≤ n 
@@ -126,4 +126,85 @@ data Total (m n : ℕ) : Set where
           → m * p ≤ n * q
 
 
-*-mono-≤ m n p q m≤n p≤q = ?
+*-mono-≤ m n p q m≤n p≤q = ≤-trans (*-monol-≤ m n p m≤n) (*-monor-≤ n p q p≤q)
+
+
+data _<_ : ℕ → ℕ → Set where 
+   z<s : ∀ {n : ℕ}
+       --------------
+       → zero < suc n
+
+   s<s : ∀ {m n : ℕ} 
+       → m < n
+       ---------------- 
+       → suc m < suc n 
+
+infix 4 _<_
+
+<-trans : ∀ {m n p : ℕ}
+        → m < n 
+        → n < p 
+        → m < p 
+
+
+
+<-trans z<s       (s<s n<p)  =  z<s
+<-trans (s<s m<n) (s<s n<p)  =  s<s (<-trans m<n n<p) 
+
+
+data Tri (m n : ℕ) : Set  where
+
+  forward :
+      m < n
+      -------
+    → Tri m n
+
+  flipped :
+      n < m
+      -------
+    → Tri m n
+
+  fixed :
+      m ≡ n
+      -------
+    → Tri m n
+
+
+
+<-trichotomy : ∀ ( m n : ℕ) → Tri m n 
+
+<-trichotomy zero zero = fixed refl 
+<-trichotomy zero (suc n ) = forward z<s
+<-trichotomy (suc m ) zero = flipped z<s
+<-trichotomy (suc m)  (suc n) with <-trichotomy m n 
+...                               | forward m<n = forward (s<s m<n)
+...                               | flipped n<m = flipped (s<s n<m)
+...                               | fixed m≡n   = fixed (cong (suc) m≡n)
+
+
+
++-monor-< : ∀ ( n p q : ℕ) 
+          → p < q
+          ------------
+          → n + p < n + q
+
++-monor-< zero p q p<q = p<q
++-monor-< (suc n) p q p<q = s<s (+-monor-< n p q p<q)
+
+
++-monol-< : ∀ (m n p : ℕ) 
+          → m < n 
+          ---------------
+          → m + p < n + p 
+
++-monol-< m n p m<n rewrite +-comm m p | +-comm n p = +-monor-< p m n m<n
+
++-mono-< : ∀ (m n p q : ℕ) 
+           → m < n 
+           ---------
+           → p < q 
+           -----------
+           → m + p < n + q
+
++-mono-< m n p q m<n p<q = <-trans (+-monol-< m n p m<n) (+-monor-< n p q p<q)
+
